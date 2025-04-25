@@ -2,9 +2,13 @@
 import axios from 'axios';
 import { toast } from '@/components/ui/use-toast';
 
+// Definir a URL base da API: use a variável de ambiente ou um fallback seguro
+// Em vez de localhost:8000, que não está acessível
+const API_URL = import.meta.env.VITE_API_URL || 'https://api.eshows.example.com';
+
 // Create an Axios instance
 export const api = axios.create({
-  baseURL: 'http://localhost:8000', // This will be replaced with VITE_API_URL
+  baseURL: API_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -93,12 +97,42 @@ api.interceptors.response.use(
   }
 );
 
+// Mock de usuários para desenvolvimento local
+const mockUsers = {
+  "demo@eshows.com": {
+    id: "user-demo-123",
+    name: "Usuário Demonstração",
+    email: "demo@eshows.com",
+    role: "admin",
+    avatar: "https://i.pravatar.cc/150?u=demo"
+  }
+};
+
 // Mock API endpoints for development (will be removed in production)
 export const mockAPI = {
   login: (email: string, password: string) => {
+    // Para desenvolvimento, verificamos se é o usuário demo e "autenticamos" localmente
+    if (email === "demo@eshows.com" && password === "demo123") {
+      return Promise.resolve({
+        data: {
+          token: "demo-mock-token-xyz",
+          user: mockUsers["demo@eshows.com"]
+        }
+      });
+    }
+    
+    // Se não for o usuário demo, tentamos a API real
     return api.post('/auth/login', { email, password });
   },
   getProfile: () => {
+    // Verificamos se é o token demo
+    const token = localStorage.getItem('eshows_token');
+    if (token === "demo-mock-token-xyz") {
+      return Promise.resolve({
+        data: mockUsers["demo@eshows.com"]
+      });
+    }
+    
     return api.get('/auth/profile');
   },
   getTasks: (params?: any) => {

@@ -2,7 +2,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
-import { api } from '@/services/api';
+import { api, mockAPI } from '@/services/api';
 
 interface User {
   id: string;
@@ -44,7 +44,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setIsLoading(true);
       api.defaults.headers.Authorization = `Bearer ${currentToken}`;
-      const response = await api.get('/auth/profile');
+      
+      // Usar mockAPI.getProfile que agora suporta o usuário demo
+      const response = await mockAPI.getProfile();
       setUser(response.data);
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -57,7 +59,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      const response = await api.post('/auth/login', { email, password });
+      // Usar mockAPI.login que agora suporta o usuário demo
+      const response = await mockAPI.login(email, password);
       const { token: newToken, user: userData } = response.data;
       
       localStorage.setItem('eshows_token', newToken);
