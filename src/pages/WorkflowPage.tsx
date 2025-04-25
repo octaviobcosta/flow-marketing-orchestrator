@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import MainLayout from "@/components/layouts/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -65,13 +64,14 @@ import {
   Handle,
   Position,
   Node,
+  EdgeOptions,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { mockAPI } from "@/services/api";
 
 // Define the structure of data for step nodes
 interface StepNodeData {
-  label: string;
+  label?: string;
   type?: string;
   role?: string;
   sla?: number;
@@ -127,7 +127,7 @@ const StepNode = ({ data, isConnectable, selected }: NodeProps) => {
       <div className="min-w-[150px]">
         <div className="flex items-center font-medium">
           {getIcon()}
-          {nodeData.label}
+          {nodeData.label || 'Unnamed Step'}
         </div>
         {(nodeData.role || nodeData.sla) && (
           <div className="mt-2 text-xs text-gray-500">
@@ -205,10 +205,6 @@ const WorkflowPage = () => {
 
   const fetchWorkflows = async () => {
     try {
-      // In real implementation, this would be a call to the actual API
-      // const response = await mockAPI.getWorkflows();
-      
-      // Mock data for demonstration
       const mockWorkflows: Workflow[] = [
         {
           id: 1,
@@ -243,10 +239,6 @@ const WorkflowPage = () => {
     try {
       setIsLoading(true);
       
-      // In real implementation, this would be a call to the actual API
-      // const response = await mockAPI.getWorkflow(workflowId.toString());
-      
-      // Mock data for demonstration
       const mockNodes = [
         {
           id: "1",
@@ -353,22 +345,24 @@ const WorkflowPage = () => {
   };
 
   const onConnect = useCallback(
-    (params: Edge | Connection) =>
-      setEdges((eds) =>
-        addEdge(
-          {
-            ...params,
-            animated: true,
-            style: { stroke: "#9b87f5" },
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              width: 20,
-              height: 20,
-            },
-          },
-          eds
-        )
-      ),
+    (params: Connection) => {
+      const newEdge: EdgeOptions = {
+        ...params,
+        animated: true,
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          width: 20,
+          height: 20,
+        },
+      };
+      
+      const edgeWithStyle = {
+        ...newEdge,
+        style: { stroke: "#9b87f5" },
+      };
+      
+      setEdges((eds) => addEdge(edgeWithStyle as Edge, eds));
+    },
     [setEdges]
   );
 
@@ -454,15 +448,6 @@ const WorkflowPage = () => {
   const handleSaveWorkflow = async () => {
     try {
       setIsLoading(true);
-      
-      // In real implementation, this would be a call to the actual API
-      // const payload = {
-      //   name: workflowName,
-      //   description: workflowDesc,
-      //   nodes: nodes,
-      //   edges: edges,
-      // };
-      // await mockAPI.createWorkflow(payload);
       
       toast({
         title: "Workflow salvo",
@@ -610,7 +595,6 @@ const WorkflowPage = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Sidebar with step types */}
           <div className="space-y-4">
             <Card>
               <CardHeader>
@@ -694,7 +678,6 @@ const WorkflowPage = () => {
             </Card>
           </div>
 
-          {/* Main canvas */}
           <div className="lg:col-span-3 h-[700px] border border-gray-200 rounded-md bg-white">
             <ReactFlowProvider>
               <div ref={reactFlowWrapper} style={{ width: '100%', height: '100%' }}>
@@ -727,7 +710,6 @@ const WorkflowPage = () => {
           </div>
         </div>
 
-        {/* Node Edit Dialog */}
         <Dialog open={isNodeDialogOpen} onOpenChange={setIsNodeDialogOpen}>
           <DialogContent>
             <DialogHeader>
