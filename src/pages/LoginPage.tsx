@@ -45,13 +45,19 @@ const LoginPage = () => {
     }
   };
 
-  // For development: Quick login with demo credentials
+  // For development: Quick login with demo credentials without password
   const handleDemoLogin = async () => {
     try {
       setIsLoading(true);
       await login("demo@eshows.com", "demo123");
       navigate("/dashboard");
     } catch (error) {
+      // If demo login fails, show toast with option to use manual login
+      toast({
+        variant: "destructive",
+        title: "Falha no Login Demo",
+        description: "Por favor, tente fazer login manualmente.",
+      });
       console.error("Demo login error:", error);
     } finally {
       setIsLoading(false);
@@ -131,7 +137,7 @@ const LoginPage = () => {
             onClick={handleDemoLogin}
             disabled={isLoading}
           >
-            Entrar com conta demo
+            {isLoading ? "Carregando..." : "Entrar com conta demo"}
           </Button>
         </CardFooter>
       </Card>
@@ -143,3 +149,4 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
+
