@@ -1,52 +1,8 @@
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import MainLayout from "@/components/layouts/MainLayout";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Save,
-  Plus,
-  Trash2,
-  Play,
-  CheckCircle,
-  AlertCircle,
-  FileText,
-  ChevronDown,
-  Loader2,
-  Users,
-  Clock,
-} from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   ReactFlow,
   MiniMap,
@@ -56,126 +12,41 @@ import {
   useEdgesState,
   addEdge,
   MarkerType,
-  Edge,
   Connection,
   Panel,
   ReactFlowProvider,
-  NodeProps,
-  Handle,
-  Position,
   Node,
+  Edge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+
+import { Save, Plus } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+// Import the new components
+import WorkflowNode, { WorkflowNodeData } from "@/components/workflow/WorkflowNode";
+import BlockLibrary from "@/components/workflow/BlockLibrary";
+import BlockEditor from "@/components/workflow/BlockEditor";
+import { Workflow, WorkflowBlock, BlockType, User } from "@/types/workflow";
 import { mockAPI } from "@/services/api";
-
-// Define the structure of data for step nodes
-interface StepNodeData {
-  label?: string;
-  type?: string;
-  role?: string;
-  sla?: number;
-}
-
-// Step node component
-const StepNode = ({ data, isConnectable, selected }: NodeProps) => {
-  // Safely cast the data to StepNodeData to avoid TypeScript errors
-  const nodeData = data as StepNodeData;
-
-  const getIcon = () => {
-    switch (nodeData.type) {
-      case "create":
-        return <FileText className="h-4 w-4 mr-2" />;
-      case "review":
-        return <CheckCircle className="h-4 w-4 mr-2" />;
-      case "approve":
-        return <CheckCircle className="h-4 w-4 mr-2" />;
-      case "publish":
-        return <Play className="h-4 w-4 mr-2" />;
-      case "alert":
-        return <AlertCircle className="h-4 w-4 mr-2" />;
-      default:
-        return <FileText className="h-4 w-4 mr-2" />;
-    }
-  };
-
-  const getBgColor = () => {
-    switch (nodeData.type) {
-      case "create":
-        return "bg-blue-50 border-blue-200";
-      case "review":
-        return "bg-amber-50 border-amber-200";
-      case "approve":
-        return "bg-green-50 border-green-200";
-      case "publish":
-        return "bg-purple-50 border-purple-200";
-      case "alert":
-        return "bg-red-50 border-red-200";
-      default:
-        return "bg-gray-50 border-gray-200";
-    }
-  };
-
-  return (
-    <div className={`p-3 rounded-md shadow-sm border ${getBgColor()} ${selected ? 'ring-2 ring-eshows-amber ring-opacity-70' : ''}`}>
-      <Handle
-        type="target"
-        position={Position.Top}
-        isConnectable={isConnectable}
-        className="w-3 h-3 bg-gray-400 border-2 border-white"
-      />
-      <div className="min-w-[150px]">
-        <div className="flex items-center font-medium">
-          {getIcon()}
-          {nodeData.label || 'Unnamed Step'}
-        </div>
-        {(nodeData.role || nodeData.sla) && (
-          <div className="mt-2 text-xs text-gray-500">
-            {nodeData.role && (
-              <div className="flex items-center">
-                <Users className="h-3 w-3 mr-1" />
-                Responsável: {nodeData.role}
-              </div>
-            )}
-            {nodeData.sla && (
-              <div className="flex items-center mt-1">
-                <Clock className="h-3 w-3 mr-1" />
-                SLA: {nodeData.sla} horas
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        isConnectable={isConnectable}
-        className="w-3 h-3 bg-gray-400 border-2 border-white"
-      />
-    </div>
-  );
-};
 
 // Node type mapping
 const nodeTypes = {
-  step: StepNode,
+  workflowNode: WorkflowNode,
 };
 
 // Initial elements (empty workflow)
-const initialNodes: Node[] = [];
+const initialNodes: Node<WorkflowNodeData>[] = [];
 const initialEdges: Edge[] = [];
-
-interface Workflow {
-  id: number;
-  name: string;
-  description: string;
-  version: number;
-  createdAt: string;
-  updatedAt: string;
-}
 
 const WorkflowPage = () => {
   // React Flow states
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [nodes, setNodes, onNodesChange] = useNodesState<WorkflowNodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   // UI states
@@ -183,16 +54,20 @@ const WorkflowPage = () => {
   const [workflowName, setWorkflowName] = useState<string>("Novo Workflow");
   const [workflowDesc, setWorkflowDesc] = useState<string>("");
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
-  const [selectedWorkflow, setSelectedWorkflow] = useState<number | null>(null);
+  const [selectedWorkflow, setSelectedWorkflow] = useState<string | null>(null);
   const [editingNode, setEditingNode] = useState<any>(null);
   const [isNodeDialogOpen, setIsNodeDialogOpen] = useState<boolean>(false);
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState<boolean>(false);
+  const [customBlocks, setCustomBlocks] = useState<BlockType[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
 
   // Load workflows on mount
   useEffect(() => {
     fetchWorkflows();
+    fetchUsers();
   }, []);
 
   // Load selected workflow when changed
@@ -201,29 +76,94 @@ const WorkflowPage = () => {
       loadWorkflow(selectedWorkflow);
     }
   }, [selectedWorkflow]);
+  
+  const fetchUsers = async () => {
+    // Mock users data
+    const mockUsers: User[] = [
+      {
+        id: "user-1",
+        name: "João Silva",
+        email: "joao.silva@example.com",
+        position: "Designer",
+        whatsapp: "11999887766",
+        managerId: "user-3",
+        avatar: "https://i.pravatar.cc/150?u=user1",
+      },
+      {
+        id: "user-2",
+        name: "Maria Oliveira",
+        email: "maria.oliveira@example.com",
+        position: "Copywriter",
+        whatsapp: "11988776655",
+        managerId: "user-3",
+        avatar: "https://i.pravatar.cc/150?u=user2",
+      },
+      {
+        id: "user-3",
+        name: "Carlos Mendes",
+        email: "carlos.mendes@example.com",
+        position: "Marketing Manager",
+        whatsapp: "11977665544",
+        avatar: "https://i.pravatar.cc/150?u=user3",
+      },
+      {
+        id: "user-demo-123",
+        name: "Usuário Demonstração",
+        email: "demo@eshows.com",
+        position: "Admin",
+        avatar: "https://i.pravatar.cc/150?u=demo",
+      },
+    ];
+    
+    setUsers(mockUsers);
+  };
 
   const fetchWorkflows = async () => {
     try {
+      // Usando dados mockados para demonstração
       const mockWorkflows: Workflow[] = [
         {
-          id: 1,
+          id: "workflow-1",
           name: "Workflow de Aprovação de Social Media",
           description: "Workflow para aprovação de conteúdo de redes sociais",
           version: 1,
           createdAt: "2025-04-10T09:00:00Z",
           updatedAt: "2025-04-15T14:30:00Z",
+          blocks: [],
+          connections: []
         },
         {
-          id: 2,
+          id: "workflow-2",
           name: "Workflow de Lançamento de Produto",
           description: "Workflow para coordenar o lançamento de produtos",
           version: 2,
           createdAt: "2025-03-20T11:00:00Z",
           updatedAt: "2025-04-18T16:45:00Z",
+          blocks: [],
+          connections: []
+        },
+      ];
+      
+      // Blocos personalizados de exemplo
+      const mockCustomBlocks: BlockType[] = [
+        {
+          id: "custom-1",
+          name: "Aprovação do Cliente",
+          description: "Bloco para aprovação do cliente",
+          color: "#ea5545",
+          icon: "check-circle",
+        },
+        {
+          id: "custom-2",
+          name: "Revisão Legal",
+          description: "Bloco para revisão pelo departamento jurídico",
+          color: "#27aeef",
+          icon: "file-text",
         },
       ];
       
       setWorkflows(mockWorkflows);
+      setCustomBlocks(mockCustomBlocks);
     } catch (error) {
       console.error("Error fetching workflows:", error);
       toast({
@@ -234,58 +174,77 @@ const WorkflowPage = () => {
     }
   };
 
-  const loadWorkflow = async (workflowId: number) => {
+  const loadWorkflow = async (workflowId: string) => {
     try {
       setIsLoading(true);
       
-      const mockNodes = [
+      // Dados mockados para demonstração
+      const mockNodes: Node<WorkflowNodeData>[] = [
         {
           id: "1",
-          type: "step",
+          type: "workflowNode",
           position: { x: 250, y: 50 },
           data: { 
             label: "Criar Conteúdo", 
             type: "create",
             role: "Content Creator",
-            sla: 24
+            assignedUser: "João Silva",
+            description: "Criar o conteúdo inicial para as redes sociais",
+            sla: 24,
+            status: "todo",
+            dependencies: [],
+            actions: ["comment", "upload"]
           }
         },
         {
           id: "2",
-          type: "step",
+          type: "workflowNode",
           position: { x: 250, y: 200 },
           data: { 
             label: "Revisar", 
             type: "review",
             role: "Content Manager",
-            sla: 12
+            assignedUser: "Maria Oliveira",
+            description: "Revisar o conteúdo criado, verificando gramática e estilo",
+            sla: 12,
+            status: "todo",
+            dependencies: ["1"],
+            actions: ["approve", "reject", "comment"]
           }
         },
         {
           id: "3",
-          type: "step",
+          type: "workflowNode",
           position: { x: 250, y: 350 },
           data: { 
             label: "Aprovação Legal", 
             type: "approve",
             role: "Legal",
-            sla: 48
+            description: "Verificação jurídica do conteúdo",
+            sla: 48,
+            status: "todo",
+            dependencies: ["2"],
+            actions: ["approve", "reject", "comment", "return"]
           }
         },
         {
           id: "4",
-          type: "step",
+          type: "workflowNode",
           position: { x: 250, y: 500 },
           data: { 
             label: "Publicar", 
             type: "publish",
             role: "Marketing",
-            sla: 8
+            description: "Publicar o conteúdo nas redes sociais",
+            sla: 8,
+            status: "todo",
+            dependencies: ["3"],
+            actions: ["comment", "upload"]
           }
         }
       ];
       
-      const mockEdges = [
+      const mockEdges: Edge[] = [
         {
           id: "e1-2",
           source: "1",
@@ -345,8 +304,9 @@ const WorkflowPage = () => {
 
   const onConnect = useCallback(
     (params: Connection) => {
-      const newEdge = {
+      const edge = {
         ...params,
+        id: `e${params.source}-${params.target}`,
         animated: true,
         style: { stroke: "#9b87f5" },
         markerEnd: {
@@ -356,15 +316,15 @@ const WorkflowPage = () => {
         },
       };
       
-      setEdges((eds) => addEdge(newEdge, eds));
+      setEdges((eds) => addEdge(edge, eds));
     },
     [setEdges]
   );
 
   const handleAddNode = (type: string) => {
     const newNode = {
-      id: `${nodes.length + 1}`,
-      type: "step",
+      id: `${Date.now()}`,
+      type: "workflowNode",
       position: {
         x: 250,
         y: nodes.length > 0 ? nodes[nodes.length - 1].position.y + 150 : 50,
@@ -372,6 +332,12 @@ const WorkflowPage = () => {
       data: {
         label: getDefaultLabel(type),
         type,
+        description: "",
+        role: "",
+        sla: 24,
+        status: "todo",
+        dependencies: [],
+        actions: []
       },
     };
 
@@ -392,17 +358,25 @@ const WorkflowPage = () => {
         return "Publicar";
       case "alert":
         return "Alerta";
+      case "custom-1":
+        return "Aprovação do Cliente";
+      case "custom-2":
+        return "Revisão Legal";
       default:
+        if (type.startsWith("custom-")) {
+          const customBlock = customBlocks.find(b => b.id === type);
+          return customBlock ? customBlock.name : "Novo Passo";
+        }
         return "Novo Passo";
     }
   };
 
-  const handleNodeClick = (event: any, node: any) => {
+  const handleNodeClick = (event: React.MouseEvent, node: Node) => {
     setEditingNode(node);
     setIsNodeDialogOpen(true);
   };
 
-  const updateNodeData = (label: string, role: string, sla: string) => {
+  const updateNodeData = (updatedData: any) => {
     if (!editingNode) return;
 
     setNodes((nds) =>
@@ -412,9 +386,7 @@ const WorkflowPage = () => {
             ...node,
             data: {
               ...node.data,
-              label,
-              role,
-              sla: sla ? parseInt(sla) : undefined,
+              ...updatedData,
             },
           };
         }
@@ -438,6 +410,25 @@ const WorkflowPage = () => {
 
     setIsNodeDialogOpen(false);
     setEditingNode(null);
+  };
+  
+  const handleSaveCustomBlock = (blockData: Partial<BlockType>) => {
+    if (!blockData.name) return;
+    
+    const newBlock: BlockType = {
+      id: blockData.id || `custom-${Date.now()}`,
+      name: blockData.name,
+      description: blockData.description || "",
+      color: blockData.color || "#6366f1",
+      icon: blockData.icon || "file-text",
+    };
+    
+    setCustomBlocks([...customBlocks, newBlock]);
+    
+    toast({
+      title: "Bloco personalizado criado",
+      description: `O bloco "${newBlock.name}" foi criado com sucesso.`,
+    });
   };
 
   const handleSaveWorkflow = async () => {
@@ -492,10 +483,19 @@ const WorkflowPage = () => {
       });
       
       const newNode = {
-        id: `${nodes.length + 1}`,
-        type: 'step',
+        id: `${Date.now()}`,
+        type: 'workflowNode',
         position,
-        data: { label: getDefaultLabel(type), type },
+        data: { 
+          label: getDefaultLabel(type),
+          type,
+          description: "",
+          role: "",
+          sla: 24,
+          status: "todo",
+          dependencies: [],
+          actions: []
+        },
       };
 
       setNodes((nds) => [...nds, newNode]);
@@ -524,7 +524,6 @@ const WorkflowPage = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
                   Workflows
-                  <ChevronDown className="ml-2 h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -542,135 +541,21 @@ const WorkflowPage = () => {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Save className="mr-2 h-4 w-4" />
-                  Salvar Workflow
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Salvar Workflow</DialogTitle>
-                  <DialogDescription>
-                    Dê um nome e uma descrição para o seu workflow.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Nome</Label>
-                    <Input
-                      id="name"
-                      value={workflowName}
-                      onChange={(e) => setWorkflowName(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Descrição</Label>
-                    <Input
-                      id="description"
-                      value={workflowDesc}
-                      onChange={(e) => setWorkflowDesc(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button
-                    type="submit"
-                    onClick={handleSaveWorkflow}
-                    disabled={isLoading || !workflowName}
-                  >
-                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Salvar
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <Button onClick={() => setIsSaveDialogOpen(true)}>
+              <Save className="mr-2 h-4 w-4" />
+              Salvar Workflow
+            </Button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Blocos</CardTitle>
-                <CardDescription>
-                  Arraste os blocos para o canvas ou clique para adicionar
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div
-                  draggable
-                  onDragStart={(event) => onDragStart(event, "create")}
-                  onClick={() => handleAddNode("create")}
-                  className="bg-blue-50 border border-blue-200 rounded-md p-3 cursor-pointer hover:bg-blue-100 transition-colors flex items-center"
-                >
-                  <FileText className="h-4 w-4 mr-2 text-blue-600" />
-                  Criar Conteúdo
-                </div>
-                <div
-                  draggable
-                  onDragStart={(event) => onDragStart(event, "review")}
-                  onClick={() => handleAddNode("review")}
-                  className="bg-amber-50 border border-amber-200 rounded-md p-3 cursor-pointer hover:bg-amber-100 transition-colors flex items-center"
-                >
-                  <CheckCircle className="h-4 w-4 mr-2 text-amber-600" />
-                  Revisar
-                </div>
-                <div
-                  draggable
-                  onDragStart={(event) => onDragStart(event, "approve")}
-                  onClick={() => handleAddNode("approve")}
-                  className="bg-green-50 border border-green-200 rounded-md p-3 cursor-pointer hover:bg-green-100 transition-colors flex items-center"
-                >
-                  <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
-                  Aprovar
-                </div>
-                <div
-                  draggable
-                  onDragStart={(event) => onDragStart(event, "publish")}
-                  onClick={() => handleAddNode("publish")}
-                  className="bg-purple-50 border border-purple-200 rounded-md p-3 cursor-pointer hover:bg-purple-100 transition-colors flex items-center"
-                >
-                  <Play className="h-4 w-4 mr-2 text-purple-600" />
-                  Publicar
-                </div>
-                <div
-                  draggable
-                  onDragStart={(event) => onDragStart(event, "alert")}
-                  onClick={() => handleAddNode("alert")}
-                  className="bg-red-50 border border-red-200 rounded-md p-3 cursor-pointer hover:bg-red-100 transition-colors flex items-center"
-                >
-                  <AlertCircle className="h-4 w-4 mr-2 text-red-600" />
-                  Alerta
-                </div>
-              </CardContent>
-              <CardFooter>
-                <p className="text-xs text-gray-500">
-                  Clique em uma etapa para editar seus detalhes
-                </p>
-              </CardFooter>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Instruções</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 text-sm">
-                <p>
-                  <strong>1.</strong> Arraste os blocos para o canvas ou clique para adicionar.
-                </p>
-                <p>
-                  <strong>2.</strong> Clique em um bloco para editar suas propriedades.
-                </p>
-                <p>
-                  <strong>3.</strong> Conecte os blocos arrastando da saída para a entrada.
-                </p>
-                <p>
-                  <strong>4.</strong> Salve o workflow quando terminar.
-                </p>
-              </CardContent>
-            </Card>
+            <BlockLibrary 
+              onDragStart={onDragStart} 
+              onAddBlock={handleAddNode}
+              onSaveCustomBlock={handleSaveCustomBlock}
+              customBlocks={customBlocks}
+            />
           </div>
 
           <div className="lg:col-span-3 h-[700px] border border-gray-200 rounded-md bg-white">
@@ -705,79 +590,14 @@ const WorkflowPage = () => {
           </div>
         </div>
 
-        <Dialog open={isNodeDialogOpen} onOpenChange={setIsNodeDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Editar Etapa</DialogTitle>
-              <DialogDescription>
-                Configure as propriedades desta etapa do workflow.
-              </DialogDescription>
-            </DialogHeader>
-            {editingNode && (
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="step-name">Nome</Label>
-                  <Input
-                    id="step-name"
-                    defaultValue={editingNode.data.label}
-                    placeholder="Digite o nome da etapa"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="step-role">Responsável</Label>
-                  <Select defaultValue={editingNode.data.role || "marketing"}>
-                    <SelectTrigger id="step-role">
-                      <SelectValue placeholder="Selecione um papel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="marketing">Marketing</SelectItem>
-                      <SelectItem value="designer">Designer</SelectItem>
-                      <SelectItem value="legal">Jurídico</SelectItem>
-                      <SelectItem value="manager">Gerente</SelectItem>
-                      <SelectItem value="director">Diretor</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="step-sla">SLA (horas)</Label>
-                  <Input
-                    id="step-sla"
-                    type="number"
-                    min="1"
-                    defaultValue={editingNode.data.sla || "24"}
-                    placeholder="Tempo para conclusão em horas"
-                  />
-                </div>
-              </div>
-            )}
-            <DialogFooter className="flex justify-between">
-              <Button
-                variant="destructive"
-                onClick={handleDeleteNode}
-                type="button"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Excluir
-              </Button>
-              <Button
-                type="submit"
-                onClick={() => {
-                  const nameInput = document.getElementById('step-name') as HTMLInputElement;
-                  const roleSelect = document.getElementById('step-role') as HTMLSelectElement;
-                  const slaInput = document.getElementById('step-sla') as HTMLInputElement;
-                  
-                  updateNodeData(
-                    nameInput.value,
-                    roleSelect.value,
-                    slaInput.value
-                  );
-                }}
-              >
-                Salvar
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <BlockEditor 
+          isOpen={isNodeDialogOpen}
+          onClose={() => setIsNodeDialogOpen(false)}
+          node={editingNode}
+          onUpdate={updateNodeData}
+          onDelete={handleDeleteNode}
+          users={users}
+        />
       </div>
     </MainLayout>
   );

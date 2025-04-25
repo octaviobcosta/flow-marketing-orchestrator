@@ -10,6 +10,8 @@ import DashboardPage from "@/pages/DashboardPage";
 import TasksPage from "@/pages/TasksPage";
 import TaskDetailPage from "@/pages/TaskDetailPage";
 import WorkflowPage from "@/pages/WorkflowPage";
+import MyTasksPage from "@/pages/MyTasksPage";
+import ProjectSettingsPage from "@/pages/ProjectSettingsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +29,8 @@ const App = () => (
             <Route path="/tasks" element={<TasksPage />} />
             <Route path="/tasks/:id" element={<TaskDetailPage />} />
             <Route path="/workflow" element={<WorkflowPage />} />
+            <Route path="/my-tasks" element={<MyTasksPage />} />
+            <Route path="/settings" element={<ProjectSettingsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
