@@ -64,12 +64,13 @@ import {
   NodeProps,
   Handle,
   Position,
+  Node,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { mockAPI } from "@/services/api";
 
-// Node types definition
-interface NodeData {
+// Define the structure of data for step nodes
+interface StepNodeData {
   label: string;
   type?: string;
   role?: string;
@@ -77,9 +78,12 @@ interface NodeData {
 }
 
 // Step node component
-const StepNode = ({ data, isConnectable, selected }: NodeProps<NodeData>) => {
+const StepNode = ({ data, isConnectable, selected }: NodeProps) => {
+  // Safely cast the data to StepNodeData to avoid TypeScript errors
+  const nodeData = data as StepNodeData;
+
   const getIcon = () => {
-    switch (data.type) {
+    switch (nodeData.type) {
       case "create":
         return <FileText className="h-4 w-4 mr-2" />;
       case "review":
@@ -96,7 +100,7 @@ const StepNode = ({ data, isConnectable, selected }: NodeProps<NodeData>) => {
   };
 
   const getBgColor = () => {
-    switch (data.type) {
+    switch (nodeData.type) {
       case "create":
         return "bg-blue-50 border-blue-200";
       case "review":
@@ -123,20 +127,20 @@ const StepNode = ({ data, isConnectable, selected }: NodeProps<NodeData>) => {
       <div className="min-w-[150px]">
         <div className="flex items-center font-medium">
           {getIcon()}
-          {data.label}
+          {nodeData.label}
         </div>
-        {(data.role || data.sla) && (
+        {(nodeData.role || nodeData.sla) && (
           <div className="mt-2 text-xs text-gray-500">
-            {data.role && (
+            {nodeData.role && (
               <div className="flex items-center">
                 <Users className="h-3 w-3 mr-1" />
-                Responsável: {data.role}
+                Responsável: {nodeData.role}
               </div>
             )}
-            {data.sla && (
+            {nodeData.sla && (
               <div className="flex items-center mt-1">
                 <Clock className="h-3 w-3 mr-1" />
-                SLA: {data.sla} horas
+                SLA: {nodeData.sla} horas
               </div>
             )}
           </div>
@@ -158,8 +162,8 @@ const nodeTypes = {
 };
 
 // Initial elements (empty workflow)
-const initialNodes = [];
-const initialEdges = [];
+const initialNodes: Node[] = [];
+const initialEdges: Edge[] = [];
 
 interface Workflow {
   id: number;
