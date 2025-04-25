@@ -64,7 +64,6 @@ import {
   Handle,
   Position,
   Node,
-  EdgeOptions,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { mockAPI } from "@/services/api";
@@ -346,9 +345,10 @@ const WorkflowPage = () => {
 
   const onConnect = useCallback(
     (params: Connection) => {
-      const newEdge: EdgeOptions = {
+      const newEdge = {
         ...params,
         animated: true,
+        style: { stroke: "#9b87f5" },
         markerEnd: {
           type: MarkerType.ArrowClosed,
           width: 20,
@@ -356,12 +356,7 @@ const WorkflowPage = () => {
         },
       };
       
-      const edgeWithStyle = {
-        ...newEdge,
-        style: { stroke: "#9b87f5" },
-      };
-      
-      setEdges((eds) => addEdge(edgeWithStyle as Edge, eds));
+      setEdges((eds) => addEdge(newEdge, eds));
     },
     [setEdges]
   );
